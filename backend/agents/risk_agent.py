@@ -3,25 +3,31 @@ import json
 
 client = OpenAI()
 
-def risk_agent_llm(income: float, debt: float):
+
+def risk_agent_llm(income: float, debt: float, external_context: any = None):
+    # 将外部上下文转化为可读字符串，如果为空则显示 "No external data available"
+    context_str = json.dumps(external_context, indent=2) if external_context else "No external data available."
+
     prompt = f"""
-You are a financial risk analyst.
+You are a senior financial risk analyst at RBC.
 
-Analyze the following loan applicant:
+Analyze the following loan applicant using both self-reported and verified bank data:
 
-Income: {income}
-Debt: {debt}
+[Self-Reported Data]
+- Annual Income: ${income}
+- Total Debt: ${debt}
+
+[Verified Bank Context (via MCP)]
+{context_str}
 
 Return ONLY a valid JSON object.
 
 Strict rules:
-- Do NOT include any explanation outside JSON
-- Do NOT include markdown (no ``` or ```json)
-- Do NOT include any extra text
-- Output must be parseable by json.loads()
+- Weigh the "Verified Bank Context" higher than self-reported data.
+- If history shows "Default", the risk_score should be significantly higher.
+- Output must be parseable by json.loads().
 
 The JSON must follow this exact schema:
-
 {{
   "risk_score": float,        // between 0 and 1
   "risk_level": "LOW" | "MEDIUM" | "HIGH",
@@ -30,15 +36,24 @@ The JSON must follow this exact schema:
 """
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o-mini", # 或者使用 gpt-4o
         messages=[
             {"role": "user", "content": prompt}
-        ]
+        ],
+        response_format={ "type": "json_object" } # Lead 级建议：强制开启 JSON 模式
     )
 
     content = response.choices[0].message.content
     print("LLM raw output:", content)
-    # 解析 JSON（实际工程中要加容错）
-    result = json.loads(content)
+    
+    try:
+        result = json.loads(content)
+    except Exception as e:
+        # 容错处理
+        result = {
+            "risk_score": 0.9,
+            "risk_level": "HIGH",
+            "explanation": f"Error parsing LLM response: {str(e)}"
+        }
 
     return result

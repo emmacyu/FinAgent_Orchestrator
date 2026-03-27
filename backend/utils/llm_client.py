@@ -2,6 +2,7 @@ from openai import OpenAI
 
 client = OpenAI()
 
+
 def call_llm(prompt: str, model: str = "gpt-4o-mini"):
     response = client.chat.completions.create(
         model=model,

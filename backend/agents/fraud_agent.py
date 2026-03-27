@@ -22,7 +22,7 @@ Return ONLY JSON:
 """
 
     response = call_llm(prompt)
-    content = response["choices"][0]["message"]["content"]
+    content = response.choices[0].message.content
 
     # 复用你已有的安全 parser（推荐）
     import re
