@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Shield, Activity, Database, Zap, AlertCircle, RefreshCw, DollarSign, Wallet } from 'lucide-react';
+import { Shield, Activity, Zap, AlertCircle, RefreshCw, DollarSign, Wallet } from 'lucide-react';
 
 function App() {
   const [clientId, setClientId] = useState('C001');
@@ -13,8 +13,8 @@ function App() {
     setLoading(true);
     setData(null); 
     try {
-      // 关键：现在我们发送的是动态的 income 和 debt
-      const response = await axios.post('http://127.0.0.1:8000/risk', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const response = await axios.post(`${API_URL}/risk`, {
         client_id: clientId,
         income: Number(income),
         debt: Number(debt)
@@ -22,7 +22,6 @@ function App() {
 
       console.log("Agent Response:", response.data);
 
-      // 兼容性解析逻辑：无论后端给什么字段，全抓出来
       const result = response.data;
       if (result && (result.risk_level || result.decision || result.risk_score !== undefined)) {
         setData(result);
@@ -42,6 +41,60 @@ function App() {
     return raw || "No detailed reasoning provided by LLM.";
   };
 
+  // 辅助函数：判断是否为低风险（用于变色）
+  const isSafe = (d: any) => {
+    const val = (d.risk_level || d.decision || "").toUpperCase();
+    return val === 'LOW' || val === 'APPROVE' || val === 'SUCCESS';
+  };
+
+  // ==========================================
+  // 🎨 【新组件】SVG 动态半圆仪表盘 (Gauge Chart)
+  // ==========================================
+  const RiskGauge = ({ score }: { score: number }) => {
+    const radius = 80; // 圆半径
+    const circumference = 2 * Math.PI * radius; // 圆周长
+    const arcLength = circumference / 2; // 半圆长度
+    const offset = arcLength - (score * arcLength); // 进度偏移量
+
+    // 自动判断颜色
+    let color = "#10b981"; // 默认绿 (0-30%)
+    if (score > 0.3) color = "#f59e0b"; // 黄 (31-60%)
+    if (score > 0.6) color = "#ef4444"; // 红 (61%+)
+
+    return (
+      <div className="relative w-48 h-24 mx-auto sm:mx-0">
+        <svg viewBox="0 0 200 100" className="w-full h-full">
+          {/* 背景半圆弧 (灰色) */}
+          <path 
+            d="M20,90 A80,80 0 0,1 180,90" 
+            fill="none" 
+            stroke="#e2e8f0" 
+            strokeWidth="20" 
+            strokeLinecap="round"
+          />
+          {/* 进度半圆弧 (动态颜色) */}
+          <path 
+            d="M20,90 A80,80 0 0,1 180,90" 
+            fill="none" 
+            stroke={color} 
+            strokeWidth="22" 
+            strokeLinecap="round"
+            strokeDasharray={arcLength}
+            strokeDashoffset={offset}
+            className="transition-all duration-1000 ease-out" // 1秒流畅动画
+          />
+        </svg>
+        {/* 圆心文字 (显示百分比) */}
+        <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
+          <p className="text-4xl font-black text-slate-950">
+            {(score * 100).toFixed(0)}<span className="text-xl">%</span>
+          </p>
+          <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mt-1">CONFIDENCE</p>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6 md:p-12 font-sans text-slate-900">
       <div className="max-w-6xl mx-auto">
@@ -54,7 +107,7 @@ function App() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight">FinAgent Orchestrator</h1>
-              <p className="text-slate-500 text-sm font-medium">Multi-Agent Risk Infrastructure</p>
+              <p className="text-slate-500 text-sm font-medium">Multi-Agent Risk Infrastructure v1.2</p>
             </div>
           </div>
           <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black border border-emerald-100 uppercase tracking-widest">
@@ -120,26 +173,32 @@ function App() {
             </div>
           </div>
 
-          {/* Results Display */}
+          {/* Results Display Area */}
           <div className="lg:col-span-2">
             {data ? (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
-                    <div className={`absolute top-0 left-0 w-2 h-full ${(data.risk_level === 'LOW' || data.decision === 'APPROVE') ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
+                  
+                  {/* 【新区域】 Agent Decision */}
+                  <div className="bg-white p-8 h-full rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
+                    <div className={`absolute top-0 left-0 w-2 h-full ${isSafe(data) ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                     <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Agent Decision</p>
-                    <p className={`text-4xl font-black mt-3 ${(data.risk_level === 'LOW' || data.decision === 'APPROVE') ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {data.risk_level || data.decision}
+                    <p className={`text-5xl font-black mt-3 transition-colors duration-500 ${isSafe(data) ? 'text-emerald-600' : 'text-rose-600'}`}>
+                      {data.risk_level || data.decision || "N/A"}
                     </p>
+                    <p className="text-xs text-slate-400 mt-2">DTI Ratio {((debt/income)*100).toFixed(1)}%</p>
                   </div>
-                  <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm text-center sm:text-left">
-                    <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Risk Score</p>
-                    <p className="text-4xl font-black mt-3 text-slate-900">
-                      {((data.risk_score || 0) * 100).toFixed(0)}%
-                    </p>
+
+                  {/* 【新区域】 动态仪表盘卡片 */}
+                  <div className="bg-white p-8 h-full rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center sm:items-start">
+                    <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-4">Risk Assessment Gauge</p>
+                    {/* 调用 SVG 仪表盘组件 */}
+                    <RiskGauge score={data.risk_score || 0} />
                   </div>
+
                 </div>
 
+                {/* AI Reasoning / Audit Trail */}
                 <div className="bg-slate-900 rounded-[2.5rem] p-10 shadow-2xl border border-slate-800">
                   <div className="flex items-center gap-3 mb-8 border-b border-slate-800 pb-6">
                     <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
@@ -148,21 +207,27 @@ function App() {
                     </h4>
                   </div>
                   
-                  <p className="text-slate-100 text-xl leading-relaxed italic font-serif">
+                  <p className="text-slate-100 text-xl leading-relaxed italic font-serif transition-opacity duration-300">
                     "{getReasoning(data)}"
                   </p>
 
-                  <div className="mt-10 flex items-center gap-6">
-                    <div className="text-[10px] font-mono text-slate-500 uppercase">Input Params: DTI Ratio {((debt/income)*100).toFixed(1)}%</div>
+                  <div className="mt-10 flex items-center gap-6 text-[10px] font-mono text-slate-500 uppercase">
+                    <div>Secure Node: {clientId}</div>
                     <div className="flex-grow h-[1px] bg-slate-800"></div>
-                    <div className="text-[10px] font-mono text-slate-500">SECURE NODE: {clientId}</div>
+                    <div>Process Time: {new Date().toLocaleTimeString()}</div>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="h-full min-h-[450px] border-2 border-dashed border-slate-200 rounded-[3rem] flex flex-col items-center justify-center text-slate-400 bg-white/50 backdrop-blur-sm">
-                <AlertCircle className="w-16 h-16 mb-6 opacity-5 text-slate-900" />
-                <p className="text-sm font-bold uppercase tracking-widest opacity-40">Awaiting Orchestration Command</p>
+                {loading ? (
+                    <Activity className="w-16 h-16 mb-6 animate-spin text-blue-500" />
+                ) : (
+                    <AlertCircle className="w-16 h-16 mb-6 opacity-5 text-slate-900" />
+                )}
+                <p className="text-sm font-bold uppercase tracking-widest opacity-40">
+                    {loading ? "Agent is pulling context..." : "Awaiting Orchestration Command"}
+                </p>
               </div>
             )}
           </div>

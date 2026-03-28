@@ -9,7 +9,9 @@ app = FastAPI()
 
 # 定义允许访问的源
 origins = [
-    "http://localhost:5173",  # Vite 默认端口
+    "http://localhost:3000",   # Docker Nginx 映射端口
+    "http://127.0.0.1:3000",   # 备用
+    "http://localhost:5173",   # 保留 Vite 开发端口
     "http://127.0.0.1:5173",
 ]
 
