@@ -97,18 +97,16 @@ FinAgent Orchestrator is built on a modern, modular architecture that combines:
 ```bash
 # Clone the repository
 git clone https://github.com/emmacyu/FinAgent_Orchestrator.git
-cd FinAgent_Orchestrator/backend
 
 # Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+python -m venv venv_finagent
+source venv_finagent/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
+cd FinAgent_Orchestrator/backend
 pip install -r requirements.txt
 
-# Set up environment variables
-cp .env.example .env
-# Edit .env and add your API keys
+# Edit .env to add API keys
 ```
 
 #### Frontend Setup
@@ -118,8 +116,6 @@ cd ../frontend
 
 # Install dependencies
 npm install
-# or
-yarn install
 ```
 
 ### Running the Application
@@ -138,8 +134,6 @@ The API server will start at `http://localhost:8000`
 ```bash
 cd frontend
 npm run dev
-# or
-yarn dev
 ```
 
 The frontend will be available at `http://localhost:5173`
