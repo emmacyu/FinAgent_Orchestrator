@@ -1,8 +1,9 @@
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
+from tools import fetch_canadian_rates
 
 
 # 1. 实例化 FastMCP，这会自动处理底层协议和 Stdio 交互
-mcp = FastMCP("RBC-Risk-Infrastructure")
+mcp = FastMCP("FinAgent-Toolserver")
 
 
 @mcp.tool()
@@ -21,6 +22,18 @@ async def check_fraud_blacklist(name: str) -> bool:
     """检查客户姓名是否在银行合规黑名单中。"""
     blacklist = ["Bad Actor Inc", "Fraudulent Entity"]
     return name in blacklist
+
+
+@mcp.tool()
+async def get_macro_context(country: str = "Canada") -> str:
+    """
+    调用外部搜索工具获取指定国家的实时宏观经济数据和利率。
+    用于风险评估时参考外部经济环境。
+    """
+    if country.lower() == "canada":
+        data = await fetch_canadian_rates()
+        return str(data)
+    return "Market data for this region is currently unavailable."
 
 
 if __name__ == "__main__":

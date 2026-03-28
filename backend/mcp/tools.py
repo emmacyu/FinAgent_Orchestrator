@@ -1,18 +1,21 @@
-from fastmcp import FastMCP
-import httpx
+# backend/mcp/tools.py
+from langchain_community.tools.tavily_search import TavilySearchResults
 
-# 创建 MCP 实例
-mcp = FastMCP("FinanceData")
 
-@mcp.tool()
-async def get_macro_rates(country: str = "Canada") -> str:
-    """获取指定国家的最新基准利率和宏观经济简报。"""
-    # 在实际生产中，这里会调用类似 Alpha Vantage 或 NewsAPI 的 MCP SDK
-    # 模拟一个实时查询结果
-    if country.lower() == "canada":
-        return "Bank of Canada current policy rate is 5.00%. Inflation is cooling to 2.8%."
-    else:
-        return f"Current base rate for {country} is approximately 5.25% based on latest Fed data."
+def get_market_search_tool():
+    """返回一个配置好的 Tavily 搜索工具实例"""
+    # 确保你的 .env 或 Docker 环境中有 TAVILY_API_KEY
+    return TavilySearchResults(max_results=2)
 
-if __name__ == "__main__":
-    mcp.run()
+
+async def fetch_canadian_rates():
+    """
+    专门用于获取加拿大宏观利率的函数
+    """
+    search = get_market_search_tool()
+    query = "current Bank of Canada overnight rate March 2026"
+    try:
+        results = await search.ainvoke(query)
+        return results
+    except Exception as e:
+        return f"Error fetching market data: {str(e)}"

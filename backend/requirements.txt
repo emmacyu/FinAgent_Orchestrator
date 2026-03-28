@@ -1,7 +1,10 @@
 mcp>=1.2.0
 fastapi
+fastmcp
 uvicorn
 openai
 python-dotenv
 langchain
 langgraph
+langchain-community
+tavily-python
