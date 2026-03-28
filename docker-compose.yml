@@ -1,48 +1,58 @@
 services:
-  # 后端服务：处理金融风险逻辑和多智能体工作流
+  # 后端：FastAPI + LangGraph + FastMCP
   finagent-backend:
-    build:
+    build: 
       context: ./backend
       dockerfile: Dockerfile
     container_name: finagent-backend
-    # 核心修复：将本地 backend 文件夹挂载到容器的 /app/backend
-    # 这样代码里的 "from backend.xxx" 就能找到对应的文件夹
-    volumes:
-      - ./backend:/app/backend
-    # 设置工作目录在 /app，并把 /app 加入 Python 路径
-    working_dir: /app
-    environment:
-      - PYTHONPATH=/app
-      - PYTHONUNBUFFERED=1
-      # 如果你有 OpenAI 或其他 API 密钥，建议放在这里或 .env 文件中
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     ports:
       - "8000:8000"
-    # 使用 uvicorn 启动，注意路径是 backend.main:app
-    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./backend:/app/backend  # 支持热重载
+    environment:
+      - ENV=development
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    # 资源限制：防止 Agent 逻辑导致内存溢出
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    # 健康检查：确保 FastAPI 真正起来了再让前端连接
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - finagent-network
 
-  # 前端服务：React/Vue 界面
+  # 前端：Nginx 托管 React/Vite 静态资源
   finagent-frontend:
-    build:
+    build: 
       context: ./frontend
       dockerfile: Dockerfile
     container_name: finagent-frontend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules # 防止本地 node_modules 覆盖容器内的
     ports:
-      - "3000:80"
-    environment:
-      - NODE_ENV=development
-      # 告诉前端如何找到后端容器
-      - REACT_APP_API_URL=http://finagent-backend:8000
-    # 修复你之前的报错：明确依赖名为 finagent-backend 的服务
+      - "3000:80"  # 宿主机 3000 映射到 Nginx 的 80
+    volumes:
+      - ./frontend/src:/app/src # 可选：同步源码
+    # 核心修复：等后端 Healthcheck 通过后再启动
     depends_on:
-      - finagent-backend
+      finagent-backend:
+        condition: service_healthy
     networks:
       - finagent-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+    restart: always
 
 networks:
   finagent-network:
