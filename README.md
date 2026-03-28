@@ -10,7 +10,7 @@ FinAgent Orchestrator is built on a modern, modular architecture that combines:
 - **MCP (Model Context Protocol)**: Provides standardized tool interfaces for external systems
 - **Specialized AI Agents**: Domain-specific agents for decision-making, fraud detection, and risk assessment
 - **FastAPI Backend**: High-performance REST API server
-- **React Frontend**: Modern, responsive user interface
+- **React Frontend**: Responsive user interface
 
 ### System Components
 
