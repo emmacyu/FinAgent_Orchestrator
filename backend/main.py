@@ -2,36 +2,35 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from backend.graph.workflow import app_graph
 from backend.schemas.request import LoanRequest
-from fastapi.middleware.cors import CORSMiddleware  # 导入中间件
+from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
 
-# 定义允许访问的源
+# define the allowed origins
 origins = [
-    "http://localhost:3000",   # Docker Nginx 映射端口
-    "http://127.0.0.1:3000",   # 备用
-    "http://localhost:5173",   # 保留 Vite 开发端口
+    "http://localhost:3000",   # Docker Nginx
+    "http://127.0.0.1:3000",   # backup
+    "http://localhost:5173",   # for Vite
     "http://127.0.0.1:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # 只有这些源可以访问
-    allow_credentials=True,           # 允许携带 Cookie（如果以后需要登录）
-    allow_methods=["*"],              # 允许所有方法 (GET, POST, OPTIONS 等)
-    allow_headers=["*"],              # 允许所有请求头
+    allow_origins=origins,            # only the origins listed are allowed
+    allow_credentials=True,           # allow credentials (if you need to log in later)
+    allow_methods=["*"],              # allow all methods (GET, POST, OPTIONS, etc.)
+    allow_headers=["*"],              # allow all headers
 )
 
 @app.post("/risk")
-async def calculate_risk(request: LoanRequest): # 这里的 'request' 是变量名，类型必须是 'LoanRequest'
-    # 打印收到的数据，方便你在终端查看
-    print(f"Received Request: {request.dict()}") 
+async def calculate_risk(request: LoanRequest):  # 'request' is of type 'LoanRequest'
+    # print(f"Received Request: {request.dict()}")
+    print(f"Received Request: {request.dict()}")
 
     config = {"configurable": {"thread_id": str(uuid.uuid4())}}
 
     try:
-        # 确保传入的是字典：request.dict()
         result = await app_graph.ainvoke(request.dict(), config=config)
         return result
     except Exception as e:

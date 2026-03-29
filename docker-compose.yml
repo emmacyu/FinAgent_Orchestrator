@@ -1,5 +1,5 @@
 services:
-  # 后端：FastAPI + LangGraph + FastMCP
+  # backend：FastAPI + LangGraph + FastMCP
   finagent-backend:
     build: 
       context: ./backend
@@ -8,17 +8,17 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend:/app/backend  # 支持热重载
+      - ./backend:/app/backend  # support hot reload
     environment:
       - ENV=development
       - ALLOWED_ORIGINS=http://localhost:3000
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    # 资源限制：防止 Agent 逻辑导致内存溢出
+    # resources: prevent the memory overflow
     deploy:
       resources:
         limits:
           memory: 2G
-    # 健康检查：确保 FastAPI 真正起来了再让前端连接
+    # health check to ensure FastAPI is up before frontend connects
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 10s
@@ -32,17 +32,17 @@ services:
     networks:
       - finagent-network
 
-  # 前端：Nginx 托管 React/Vite 静态资源
+  # frontend: Nginx take care of serving React/Vite static assets
   finagent-frontend:
     build: 
       context: ./frontend
       dockerfile: Dockerfile
     container_name: finagent-frontend
     ports:
-      - "3000:80"  # 宿主机 3000 映射到 Nginx 的 80
+      - "3000:80"  # host 3000 maps to Nginx 80
     volumes:
-      - ./frontend/src:/app/src # 可选：同步源码
-    # 核心修复：等后端 Healthcheck 通过后再启动
+      - ./frontend/src:/app/src # optional: sync source code
+    # core fix: wait for backend healthcheck to pass before starting
     depends_on:
       finagent-backend:
         condition: service_healthy

@@ -18,18 +18,18 @@ async def call_mcp_tool(tool_name: str, arguments: dict):
     自包含的原子调用，解决 Cancel Scope 跨 Task 报错问题。
     """
     try:
-        # 1. 启动 Stdio 子进程
+        # 1. start the child process
         async with stdio_client(server_params) as (read, write):
-            # 2. 创建 Session
+            # 2. create Session
             async with ClientSession(read, write) as session:
-                # 3. 初始化并设置严格超时
-                # 注意：不要在外部封装过多的 wait_for，让 initialize 内部处理
+                # 3. initialize and set strict timeout
+                # Note: Do not wrap too much wait_for externally, let initialize handle it internally
                 await asyncio.wait_for(session.initialize(), timeout=5.0)
-                
-                # 4. 调用工具
+
+                # 4. call tool
                 result = await session.call_tool(tool_name, arguments)
-                
-                # 5. 解析并返回
+
+                # 5. parse and return
                 if result and result.content:
                     raw_text = result.content[0].text
                     try:
@@ -41,6 +41,6 @@ async def call_mcp_tool(tool_name: str, arguments: dict):
         print(f"MCP Timeout: {tool_name} failed to respond.")
         return {"error": "timeout"}
     except Exception as e:
-        # 这里会捕获到子进程启动失败或协议错误
+        # capture the subprocess startup failure or protocol error
         print(f"MCP Critical Error: {e}")
         return {"error": str(e)}

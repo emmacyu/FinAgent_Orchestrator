@@ -1,3 +1,4 @@
+# ...existing code...
 from langgraph.graph import StateGraph, END
 from typing import TypedDict
 from backend.schemas.state import LoanState
@@ -9,20 +10,20 @@ from backend.mcp.client import call_mcp_tool
 
 
 async def risk_node(state: LoanState):
-    # 1. 通过 MCP 获取核心信用上下文 (不再只看用户填写的 income/debt)
+    # 1. Retrieve core credit context via MCP (no longer only looking at user-provided income/debt)
     credit_context = await call_mcp_tool(
-        "get_client_credit_context", 
+        "get_client_credit_context",
         {"client_id": state.get("client_id", "C001")}
     )
-    
-    # 2. 将背景数据传给你的 risk_agent_llm
-    # 这样 LLM 就能做出基于真实历史数据的判定
+
+    # 2. Pass the background data to risk_agent_llm
+    # This allows the LLM to make judgments based on real historical data
     result = risk_agent_llm(
         income=state["income"], 
         debt=state["debt"],
         external_context=credit_context
     )
-    
+
     return {
         "risk_score": result["risk_score"],
         "audit_log": [f"Risk analysis with MCP Context: {credit_context}"]
@@ -30,15 +31,15 @@ async def risk_node(state: LoanState):
 
 
 async def fraud_node(state: LoanState):
-    # 1. 调用 MCP 工具检查黑名单 (使用 client_id 或姓名，这里假设 mock 数据库有姓名)
-    # 这里的 "name" 可以从 state 或之前的 context 中获取
+    # 1. Call the MCP tool to check the blacklist (use client_id or name; assume mock DB has names)
+    # The "name" here can be obtained from state or previous context
     is_blacklisted = await call_mcp_tool(
         "check_fraud_blacklist", 
         {"name": state.get("client_name", "Unknown")} 
     )
 
-    # 2. 将黑名单结果传给 LLM 或者是直接判定
-    # 如果在黑名单，直接给 HIGH 风险
+    # 2. Pass the blacklist result to the LLM or decide directly
+    # If on the blacklist, mark as HIGH risk immediately
     if is_blacklisted is True:
         return {
             "fraud_flag": True,
@@ -46,7 +47,7 @@ async def fraud_node(state: LoanState):
             "audit_log": ["CRITICAL: Client found on internal fraud blacklist!"]
         }
 
-    # 3. 否则，继续走原来的 LLM 逻辑
+    # 3. Otherwise, continue with the original LLM logic
     result = fraud_agent_llm(state["income"], state["debt"], state["risk_score"])
     return {
         "fraud_flag": result["fraud_flag"], 
@@ -59,27 +60,27 @@ async def decision_node(state: LoanState):
     risk = state["risk_score"]
     fraud = state.get("fraud_flag", False)
 
-    # 逻辑 A: 直接拒绝
+    # Logic A: immediate rejection
     if risk > 0.7 or fraud:
         return {"decision": "REJECT", "status": "FINALIZED"}
     
-    # 逻辑 B: 需要人工（核心：触发中断的标记）
+    # Logic B: require human review (core: trigger an interrupt flag)
     if risk > 0.4:
         return {"decision": "PENDING_HUMAN", "status": "WAITING"}
 
-    # 逻辑 C: 直接通过
+    # Logic C: immediate approval
     return {"decision": "APPROVE", "status": "FINALIZED"}
 
 
 def route_after_risk(state: LoanState):
     score = state["risk_score"]
-    if score < 0.3: return "low"      # 低风险 -> 直接去 decision
-    if score < 0.7: return "medium"   # 中风险 -> 必须去 fraud
-    return "high"                     # 高风险 -> 直接去 decision (拒绝)
+    if score < 0.3: return "low"      # low risk -> go directly to decision
+    if score < 0.7: return "medium"   # medium risk -> must go to fraud
+    return "high"                     # high risk -> go directly to decision (likely reject)
 
 
 def route_after_decision(state: LoanState):
-    # 如果是人工审核状态，我们让它流向一个特殊的逻辑或者 END
+    # If it's pending human review, route to a special flow or END
     if state["decision"] == "PENDING_HUMAN":
         return "wait"
     return "finish"
@@ -97,9 +98,9 @@ graph.add_conditional_edges(
     "risk",
     route_after_risk,
     {
-        "low": "decision",     # 低风险直接决策
-        "medium": "fraud",     # 中风险走 fraud node
-        "high": "decision"     # 高风险直接决策（可直接拒绝）
+        "low": "decision",     # low risk directly to decision
+        "medium": "fraud",     # medium risk goes to fraud node
+        "high": "decision"     # high risk directly to decision (can be rejected)
     }
 )
 
@@ -109,14 +110,14 @@ graph.add_conditional_edges(
     "decision",
     route_after_decision,
     {
-        "wait": END,   # 配合 interrupt_after 使用
+        "wait": END,   # used with interrupt_after
         "finish": END
     }
 )
 
 memory = MemorySaver()
-# 重点：我们在 decision 节点执行完后中断，如果 decision 是 PENDING_HUMAN
+# Important: we interrupt after the decision node if the decision is PENDING_HUMAN
 app_graph = graph.compile(
     checkpointer=memory,
-    interrupt_after=["decision"] 
+    interrupt_after=["decision"]
 )

@@ -5,7 +5,7 @@ client = OpenAI()
 
 
 def risk_agent_llm(income: float, debt: float, external_context: any = None):
-    # 将外部上下文转化为可读字符串，如果为空则显示 "No external data available"
+    # convert external context to readable string, or show "No external data available" if empty
     context_str = json.dumps(external_context, indent=2) if external_context else "No external data available."
 
     prompt = f"""
@@ -36,11 +36,11 @@ The JSON must follow this exact schema:
 """
 
     response = client.chat.completions.create(
-        model="gpt-4o-mini", # 或者使用 gpt-4o
+        model="gpt-4o-mini",
         messages=[
             {"role": "user", "content": prompt}
         ],
-        response_format={ "type": "json_object" } # Lead 级建议：强制开启 JSON 模式
+        response_format={ "type": "json_object" } # json
     )
 
     content = response.choices[0].message.content
@@ -49,7 +49,7 @@ The JSON must follow this exact schema:
     try:
         result = json.loads(content)
     except Exception as e:
-        # 容错处理
+        # error handling
         result = {
             "risk_score": 0.9,
             "risk_level": "HIGH",

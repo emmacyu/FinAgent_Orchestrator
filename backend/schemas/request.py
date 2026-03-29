@@ -2,6 +2,6 @@ from pydantic import BaseModel
 
 
 class LoanRequest(BaseModel):
-    client_id: str  # 必须传入，用于 MCP 查询
+    client_id: str  # for MCP queries
     income: float
     debt: float

@@ -4,8 +4,8 @@ import { Shield, Activity, Zap, AlertCircle, RefreshCw, DollarSign, Wallet } fro
 
 function App() {
   const [clientId, setClientId] = useState('C001');
-  const [income, setIncome] = useState(60000); // 默认年收入
-  const [debt, setDebt] = useState(15000);    // 默认债务
+  const [income, setIncome] = useState(60000); // default income
+  const [debt, setDebt] = useState(15000);    // default debt
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
@@ -34,37 +34,37 @@ function App() {
     }
   };
 
-  // 辅助函数：智能提取分析文字
+  // extract text
   const getReasoning = (d: any) => {
     const raw = d.explanation || d.audit_log || d.reasoning;
     if (Array.isArray(raw)) return raw[0];
     return raw || "No detailed reasoning provided by LLM.";
   };
 
-  // 辅助函数：判断是否为低风险（用于变色）
+  // check if risky or not for color change
   const isSafe = (d: any) => {
     const val = (d.risk_level || d.decision || "").toUpperCase();
     return val === 'LOW' || val === 'APPROVE' || val === 'SUCCESS';
   };
 
   // ==========================================
-  // 🎨 【新组件】SVG 动态半圆仪表盘 (Gauge Chart)
+  // 🎨 SVG Gauge Chart
   // ==========================================
   const RiskGauge = ({ score }: { score: number }) => {
-    const radius = 80; // 圆半径
-    const circumference = 2 * Math.PI * radius; // 圆周长
-    const arcLength = circumference / 2; // 半圆长度
-    const offset = arcLength - (score * arcLength); // 进度偏移量
+    const radius = 80; // radius
+    const circumference = 2 * Math.PI * radius; // circumference
+    const arcLength = circumference / 2; // arc length
+    const offset = arcLength - (score * arcLength); // offset
 
-    // 自动判断颜色
-    let color = "#10b981"; // 默认绿 (0-30%)
-    if (score > 0.3) color = "#f59e0b"; // 黄 (31-60%)
-    if (score > 0.6) color = "#ef4444"; // 红 (61%+)
+    // check color
+    let color = "#10b981"; // default green (0-30%)
+    if (score > 0.3) color = "#f59e0b"; // yellow (31-60%)
+    if (score > 0.6) color = "#ef4444"; // red (61%+)
 
     return (
       <div className="relative w-48 h-24 mx-auto sm:mx-0">
         <svg viewBox="0 0 200 100" className="w-full h-full">
-          {/* 背景半圆弧 (灰色) */}
+          {/* background half arc (gray) */}
           <path 
             d="M20,90 A80,80 0 0,1 180,90" 
             fill="none" 
@@ -72,7 +72,7 @@ function App() {
             strokeWidth="20" 
             strokeLinecap="round"
           />
-          {/* 进度半圆弧 (动态颜色) */}
+          {/* progress half arc (dynamic color) */}
           <path 
             d="M20,90 A80,80 0 0,1 180,90" 
             fill="none" 
@@ -81,10 +81,10 @@ function App() {
             strokeLinecap="round"
             strokeDasharray={arcLength}
             strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out" // 1秒流畅动画
+            className="transition-all duration-1000 ease-out" // animation
           />
         </svg>
-        {/* 圆心文字 (显示百分比) */}
+        {/* text */}
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
           <p className="text-4xl font-black text-slate-950">
             {(score * 100).toFixed(0)}<span className="text-xl">%</span>
@@ -179,7 +179,7 @@ function App() {
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-center">
                   
-                  {/* 【新区域】 Agent Decision */}
+                  {/*  Agent Decision */}
                   <div className="bg-white p-8 h-full rounded-[2rem] border border-slate-200 shadow-sm relative overflow-hidden">
                     <div className={`absolute top-0 left-0 w-2 h-full ${isSafe(data) ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
                     <p className="text-slate-400 text-xs font-black uppercase tracking-widest">Agent Decision</p>
@@ -189,10 +189,10 @@ function App() {
                     <p className="text-xs text-slate-400 mt-2">DTI Ratio {((debt/income)*100).toFixed(1)}%</p>
                   </div>
 
-                  {/* 【新区域】 动态仪表盘卡片 */}
+                  {/*  Dynamic Gauge Card */}
                   <div className="bg-white p-8 h-full rounded-[2rem] border border-slate-200 shadow-sm flex flex-col items-center sm:items-start">
                     <p className="text-slate-400 text-xs font-black uppercase tracking-widest mb-4">Risk Assessment Gauge</p>
-                    {/* 调用 SVG 仪表盘组件 */}
+                    {/* SVG Gauge Chart */}
                     <RiskGauge score={data.risk_score || 0} />
                   </div>
 
